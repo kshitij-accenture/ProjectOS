@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ProjectX</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;1,9..144,300&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+<style>
+:root {
+  --bg: #FFFFFF;
+  --surface: #FAFAF8;
+  --surface2: #F3F0FA;
+  --surface3: #E6DCFF;
+  --border: rgba(70,0,115,0.10);
+  --border2: rgba(117,0,192,0.22);
+  --text: #1A1A1A;
+  --muted: #96968C;
+  --muted2: #3D3D3D;
+  --accent: #A100FF;
+  --accent2: #7500C0;
+  --accent-glow: rgba(161,0,255,0.09);
+  --plum: #460073;
+  --green: #1A7A4A;
+  --amber: #C87020;
+  --red: #C0392B;
+  --mono: 'DM Mono', monospace;
+  --serif: 'Fraunces', serif;
+  --sans: 'DM Sans', sans-serif;
+  --sidebar-w: 252px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+body { background: var(--bg); color: var(--text); font-family: var(--sans); display: flex; flex-direction: column; }
+
+/* TOP BAR */
+.topbar {
+  height: 48px; min-height: 48px; background: var(--plum);
+  border-bottom: 1px solid rgba(255,255,255,0.12);
+  display: flex; align-items: center; z-index: 100; flex-shrink: 0;
+}
+.topbar-logo {
+  width: var(--sidebar-w); padding: 0 18px;
+  display: flex; align-items: center; gap: 9px;
+  border-right: 1px solid rgba(255,255,255,0.12); height: 100%; flex-shrink: 0;
+}
+.logo-dot { width: 6px; height: 6px; border-radius: 50%; background: #A100FF; animation: pulse 2.5s ease infinite; flex-shrink: 0; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.3;transform:scale(.7)} }
+.logo-text { font-family: var(--serif); font-size: 17px; color: #FFFFFF; letter-spacing: -0.02em; }
+.topbar-cmd {
+  flex: 1; display: flex; align-items: center; gap: 10px; padding: 0 18px;
+  border-right: 1px solid rgba(255,255,255,0.12);
+}
+.cmd-icon { font-size: 13px; color: rgba(255,255,255,0.5); font-family: var(--mono); }
+.cmd-input {
+  flex: 1; background: transparent; border: none; outline: none;
+  font-size: 13px; color: #FFFFFF; font-family: var(--sans);
+}
+.cmd-input::placeholder { color: rgba(255,255,255,0.4); }
+.cmd-input:disabled { opacity: .5; cursor: not-allowed; }
+.cmd-send {
+  background: #A100FF; border: none; color: white;
+  padding: 5px 14px; border-radius: 6px; font-size: 12px;
+  cursor: pointer; font-family: var(--sans); font-weight: 500;
+  transition: all .15s; white-space: nowrap;
+}
+.cmd-send:hover:not(:disabled) { background: #7500C0; }
+.cmd-send:disabled { opacity: .4; cursor: not-allowed; }
+.topbar-user {
+  padding: 0 16px; display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+}
+.user-name { font-size: 12px; color: rgba(255,255,255,0.75); }
+.role-badge {
+  font-size: 9px; padding: 2px 7px; border-radius: 8px; font-family: var(--mono);
+  background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.75);
+}
+.logout-btn {
+  background: transparent; border: 1px solid rgba(255,255,255,0.2);
+  color: rgba(255,255,255,0.6); padding: 3px 9px; border-radius: 5px;
+  font-size: 11px; cursor: pointer; font-family: var(--sans);
+  transition: all .15s;
+}
+.logout-btn:hover { border-color: rgba(255,255,255,0.5); color: #FFFFFF; }
+
+/* AI STRIP */
+.ai-strip {
+  background: var(--surface2); border-bottom: 1px solid rgba(161,0,255,0.15);
+  padding: 10px 24px; font-size: 12.5px; color: var(--muted2);
+  display: none; max-height: 160px; overflow-y: auto; flex-shrink: 0;
+}
+.ai-strip.show { display: block; }
+.ai-strip-label { font-size: 9px; font-family: var(--mono); color: #A100FF; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 5px; }
+.typing { display: flex; gap: 3px; align-items: center; padding: 4px 0; }
+.typing-dot { width: 4px; height: 4px; border-radius: 50%; background: #A100FF; animation: bounce .8s ease infinite; }
+.typing-dot:nth-child(2) { animation-delay: .15s; }
+.typing-dot:nth-child(3) { animation-delay: .3s; }
+@keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
+
+/* LAYOUT */
+.layout { display: flex; flex: 1; overflow: hidden; }
+
+/* SIDEBAR */
+.sidebar {
+  width: var(--sidebar-w); min-width: var(--sidebar-w);
+  background: var(--surface); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow-y: auto; flex-shrink: 0;
+}
+.sidebar.hidden { display: none; }
+.sidebar::-webkit-scrollbar { width: 4px; }
+.sidebar::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+.sidebar-section { padding: 14px 12px 6px; }
+.sidebar-label { font-size: 9px; color: var(--plum); letter-spacing: .12em; text-transform: uppercase; font-family: var(--mono); padding: 0 6px; margin-bottom: 4px; font-weight: 500; }
+.nav-item {
+  display: flex; align-items: center; gap: 8px; padding: 6px 8px;
+  border-radius: 6px; cursor: pointer; font-size: 12.5px; color: var(--muted2);
+  transition: all .12s; border: 1px solid transparent; margin-bottom: 1px; user-select: none;
+}
+.nav-item:hover { background: var(--surface2); color: var(--text); }
+.nav-item.active { background: var(--accent-glow); color: var(--accent); border-color: rgba(161,0,255,.2); }
+.nav-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+.nav-badge {
+  margin-left: auto; font-size: 9px; padding: 1px 5px; border-radius: 8px; font-family: var(--mono);
+  background: rgba(192,57,43,.12); color: var(--red);
+}
+.nav-badge.green { background: rgba(26,122,74,.1); color: var(--green); }
+.nav-badge.amber { background: rgba(200,112,32,.1); color: var(--amber); }
+.nav-badge.blue { background: var(--accent-glow); color: var(--accent); }
+.sidebar-divider { height: 1px; background: var(--border); margin: 8px 12px; }
+.wiki-pages-list { padding: 4px 12px 8px; }
+
+/* MAIN */
+.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+/* INGEST PANEL */
+.ingest-panel {
+  background: var(--surface2); border-bottom: 1px solid rgba(161,0,255,0.18);
+  padding: 16px 24px; display: none; flex-shrink: 0;
+}
+.ingest-panel.show { display: block; }
+.ingest-title { font-size: 12px; font-weight: 500; margin-bottom: 10px; color: var(--plum); }
+.ingest-row { display: flex; gap: 8px; margin-bottom: 8px; }
+.ingest-input {
+  flex: 1; background: #FFFFFF; border: 1px solid var(--border2);
+  border-radius: 6px; padding: 7px 10px; font-size: 12px;
+  font-family: var(--sans); color: var(--text); outline: none;
+}
+.ingest-input::placeholder { color: var(--muted); }
+.ingest-textarea {
+  width: 100%; background: #FFFFFF; border: 1px solid var(--border2);
+  border-radius: 7px; padding: 10px 12px; font-size: 12.5px;
+  font-family: var(--sans); color: var(--text); resize: vertical;
+  min-height: 90px; outline: none; line-height: 1.6; margin-bottom: 8px;
+}
+.ingest-textarea:focus,.ingest-input:focus { border-color: var(--accent); }
+.btn-purple {
+  background: #A100FF; border: none; color: white;
+  padding: 7px 16px; border-radius: 6px; font-size: 12px;
+  cursor: pointer; font-family: var(--sans); font-weight: 500; transition: all .15s;
+}
+.btn-purple:hover:not(:disabled) { background: #7500C0; }
+.btn-purple:disabled { opacity: .4; cursor: not-allowed; }
+.btn-ghost {
+  background: transparent; border: 1px solid var(--border2);
+  color: var(--muted2); padding: 7px 12px; border-radius: 6px;
+  font-size: 12px; cursor: pointer; font-family: var(--sans);
+}
+
+/* PAGE AREA */
+.page-area { flex: 1; overflow-y: auto; padding: 32px 40px 60px; }
+.page-area::-webkit-scrollbar { width: 5px; }
+.page-area::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+/* PORTFOLIO */
+.portfolio-title { font-family: var(--serif); font-size: 28px; font-weight: 300; color: var(--plum); margin-bottom: 4px; }
+.portfolio-sub { font-size: 11px; color: var(--muted); font-family: var(--mono); margin-bottom: 24px; }
+.health-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 24px; }
+.health-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+.hc-label { font-size: 9px; color: var(--muted); letter-spacing: .1em; text-transform: uppercase; font-family: var(--mono); margin-bottom: 8px; }
+.hc-val { font-size: 22px; font-weight: 500; font-family: var(--mono); }
+.hc-sub { font-size: 10px; color: var(--muted2); margin-top: 4px; }
+.c-green { color: var(--green); } .c-amber { color: var(--amber); } .c-red { color: var(--red); } .c-accent { color: var(--accent); } .c-plum { color: var(--plum); }
+
+.section { margin-bottom: 24px; }
+.section-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+.section-title { font-size: 9px; color: var(--plum); letter-spacing: .12em; text-transform: uppercase; font-family: var(--mono); font-weight: 500; }
+.section-count { font-size: 9px; color: var(--muted); background: var(--surface2); padding: 2px 6px; border-radius: 8px; font-family: var(--mono); }
+.section-link { margin-left: auto; font-size: 10px; color: var(--accent); cursor: pointer; font-family: var(--mono); }
+
+.ws-row {
+  display: grid; grid-template-columns: 170px 1fr 90px 80px 18px;
+  align-items: center; gap: 12px; padding: 10px 14px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; margin-bottom: 6px; cursor: pointer; transition: border-color .15s;
+}
+.ws-row:hover { border-color: var(--border2); }
+.ws-name { font-size: 12.5px; font-weight: 500; color: var(--plum); }
+.ws-owner { font-size: 10px; color: var(--muted); margin-top: 2px; }
+.prog-bar { height: 2px; background: var(--surface3); border-radius: 1px; overflow: hidden; margin-bottom: 4px; }
+.prog-fill { height: 100%; border-radius: 1px; }
+.prog-label { font-size: 9px; color: var(--muted); font-family: var(--mono); }
+.pill { font-size: 9px; font-weight: 500; padding: 3px 8px; border-radius: 8px; text-align: center; font-family: var(--mono); white-space: nowrap; }
+.pill-green { background: rgba(26,122,74,.1); color: var(--green); }
+.pill-amber { background: rgba(200,112,32,.1); color: var(--amber); }
+.pill-red { background: rgba(192,57,43,.1); color: var(--red); }
+.pill-blue { background: var(--accent-glow); color: var(--accent); }
+
+.risk-row { display: flex; gap: 10px; align-items: flex-start; padding: 10px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 6px; }
+.risk-bar { width: 3px; border-radius: 2px; align-self: stretch; flex-shrink: 0; min-height: 36px; }
+.risk-title { font-size: 12px; font-weight: 500; margin-bottom: 3px; }
+.risk-meta { font-size: 10px; color: var(--muted); display: flex; gap: 10px; flex-wrap: wrap; }
+.risk-owner { margin-left: auto; font-size: 9px; color: var(--muted2); font-family: var(--mono); flex-shrink: 0; }
+
+.dec-row { display: flex; gap: 12px; align-items: flex-start; padding: 10px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 6px; }
+.dec-date { font-size: 9px; font-family: var(--mono); color: var(--muted); min-width: 72px; margin-top: 2px; }
+.dec-title { font-size: 12px; font-weight: 500; margin-bottom: 2px; }
+.dec-rationale { font-size: 10.5px; color: var(--muted2); }
+
+/* WIKI */
+.wiki-header { margin-bottom: 24px; }
+.wiki-breadcrumb { font-size: 10px; color: var(--muted); font-family: var(--mono); margin-bottom: 10px; }
+.wiki-breadcrumb span { color: var(--muted2); }
+.wiki-title { font-family: var(--serif); font-size: 26px; font-weight: 300; color: var(--plum); margin-bottom: 8px; }
+.wiki-meta { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
+.wiki-updated { font-size: 10px; color: var(--muted); font-family: var(--mono); }
+.wiki-tag { font-size: 9px; padding: 2px 8px; border-radius: 8px; background: var(--accent-glow); color: var(--accent); font-family: var(--mono); }
+.wiki-commit { font-size: 9px; color: var(--muted); font-family: var(--mono); }
+.wiki-commit a { color: var(--accent); text-decoration: none; }
+.wiki-body { line-height: 1.8; font-size: 13.5px; color: var(--muted2); max-width: 700px; }
+.wiki-body h1,.wiki-body h2,.wiki-body h3 { color: var(--plum); font-family: var(--serif); font-weight: 400; margin: 22px 0 10px; }
+.wiki-body h2 { font-size: 19px; border-bottom: 1px solid rgba(70,0,115,0.12); padding-bottom: 6px; }
+.wiki-body h3 { font-size: 15px; }
+.wiki-body p { margin-bottom: 12px; }
+.wiki-body ul,ol { padding-left: 20px; margin-bottom: 12px; }
+.wiki-body li { margin-bottom: 4px; }
+.wiki-body strong { color: var(--text); font-weight: 500; }
+.wiki-body code { background: var(--surface3); padding: 1px 5px; border-radius: 3px; font-family: var(--mono); font-size: 12px; color: var(--plum); }
+.wiki-body blockquote { border-left: 2px solid #A100FF; padding-left: 14px; color: var(--muted2); font-style: italic; margin: 16px 0; }
+.wiki-body table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 12.5px; }
+.wiki-body th { background: var(--surface3); padding: 7px 10px; text-align: left; color: var(--plum); font-weight: 500; border-bottom: 1px solid var(--border2); }
+.wiki-body td { padding: 7px 10px; border-bottom: 1px solid var(--border); color: var(--muted2); }
+.wiki-body a { color: var(--accent); text-decoration: none; }
+.wiki-body a:hover { text-decoration: underline; }
+
+.quick-update-bar { margin-top: 28px; padding-top: 16px; border-top: 1px solid var(--border); }
+.quick-update-label { font-size: 9px; color: var(--muted); font-family: var(--mono); margin-bottom: 8px; letter-spacing: .08em; text-transform: uppercase; }
+.quick-update-row { display: flex; gap: 8px; }
+.quick-update-input {
+  flex: 1; background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: 6px; padding: 7px 10px; font-size: 12px;
+  font-family: var(--sans); color: var(--text); outline: none; transition: border-color .15s;
+}
+.quick-update-input:focus { border-color: var(--accent); }
+.quick-update-input::placeholder { color: var(--muted); }
+
+.history-section { margin-top: 24px; }
+.history-title { font-size: 9px; color: var(--muted); font-family: var(--mono); letter-spacing: .1em; text-transform: uppercase; margin-bottom: 8px; }
+.history-item { display: flex; gap: 10px; align-items: flex-start; font-size: 11px; color: var(--muted2); padding: 6px 0; border-bottom: 1px solid var(--border); }
+.history-sha { font-family: var(--mono); color: var(--accent); font-size: 10px; flex-shrink: 0; }
+.history-msg { flex: 1; }
+.history-author { font-size: 10px; color: var(--muted); flex-shrink: 0; }
+
+/* EXEC VIEW */
+.exec-digest { max-width: 660px; }
+.exec-title { font-family: var(--serif); font-size: 28px; font-weight: 300; color: var(--plum); margin-bottom: 4px; }
+.exec-sub { font-size: 11px; color: var(--muted); font-family: var(--mono); margin-bottom: 28px; }
+.exec-refresh { font-size: 11px; color: var(--accent); cursor: pointer; font-family: var(--mono); border: none; background: transparent; }
+
+/* LOADING */
+.loading-state { padding: 60px 40px; text-align: center; }
+.loading-state p { font-size: 13px; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-logo">
+    <div class="logo-dot"></div>
+    <div class="logo-text">ProjectX</div>
+  </div>
+  <div class="topbar-cmd" id="cmd-bar">
+    <span class="cmd-icon">⌘</span>
+    <input class="cmd-input" id="cmd-input" placeholder="Ask anything — 'Draft steerco update' · 'What are the open risks?' · 'Summarise MIA this week'" />
+    <button class="cmd-send" id="cmd-send" onclick="runCommand()">Run</button>
+  </div>
+  <div class="topbar-user">
+    <span class="user-name" id="user-name">Loading...</span>
+    <span class="role-badge" id="role-badge">...</span>
+    <button class="logout-btn" onclick="location.href='/auth/logout'">Sign out</button>
+  </div>
+</div>
+
+<!-- AI STRIP -->
+<div class="ai-strip" id="ai-strip">
+  <div class="ai-strip-label" id="ai-strip-label">AI</div>
+  <div id="ai-strip-body"></div>
+</div>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Portfolio</div>
+      <div class="nav-item active" id="nav-portfolio" onclick="navigate('portfolio')">
+        <div class="nav-dot" style="background:var(--accent)"></div>
+        All projects
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Workstreams</div>
+      <div class="nav-item" id="nav-mia" onclick="navigate('wiki','mia-overview')">
+        <div class="nav-dot" style="background:var(--green)"></div>
+        MIA <span class="nav-badge green" style="margin-left:auto">live</span>
+      </div>
+      <div class="nav-item" id="nav-meridian" onclick="navigate('wiki','meridian-overview')">
+        <div class="nav-dot" style="background:var(--accent)"></div>
+        Meridian
+      </div>
+      <div class="nav-item" id="nav-symphony" onclick="navigate('wiki','symphony-overview')">
+        <div class="nav-dot" style="background:#22B8CC"></div>
+        Symphony
+      </div>
+      <div class="nav-item" id="nav-tequila" onclick="navigate('wiki','tequila-overview')">
+        <div class="nav-dot" style="background:var(--amber)"></div>
+        Tequila <span class="nav-badge" style="margin-left:auto">risk</span>
+      </div>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Wiki</div>
+    </div>
+    <div class="wiki-pages-list" id="wiki-nav-list">
+      <div class="nav-item" onclick="navigate('wiki','projectx')">
+        <div class="nav-dot" style="background:var(--muted)"></div> ProjectX concept
+      </div>
+      <div class="nav-item" onclick="navigate('wiki','seven-tests')">
+        <div class="nav-dot" style="background:var(--muted)"></div> Seven tests
+      </div>
+      <div class="nav-item" onclick="navigate('wiki','stakeholders')">
+        <div class="nav-dot" style="background:var(--muted)"></div> Stakeholder map
+      </div>
+      <div class="nav-item" onclick="navigate('wiki','decision-log')">
+        <div class="nav-dot" style="background:var(--muted)"></div> Decision log
+      </div>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <div class="sidebar-section" id="actions-section">
+      <div class="sidebar-label">Actions</div>
+      <div class="nav-item" id="nav-ingest" onclick="toggleIngest()">
+        <div class="nav-dot" style="background:var(--muted)"></div>
+        + Ingest source
+      </div>
+      <div class="nav-item" id="nav-lint" onclick="runLint()">
+        <div class="nav-dot" style="background:var(--muted)"></div>
+        Lint wiki
+      </div>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- INGEST -->
+    <div class="ingest-panel" id="ingest-panel">
+      <div class="ingest-title">Ingest new source — Claude will extract, cross-reference, and commit to GitHub</div>
+      <div class="ingest-row">
+        <input class="ingest-input" id="ingest-label" placeholder="Source name (e.g. 'MIA sync 3 Jun' or 'Tequila steerco notes')" style="flex:2"/>
+      </div>
+      <textarea class="ingest-textarea" id="ingest-text"
+        placeholder="Paste your content — meeting notes, emails, decisions, observations. Claude will read it, extract what matters, and update the relevant wiki pages with a git commit."></textarea>
+      <div class="ingest-row">
+        <button class="btn-purple" id="ingest-btn" onclick="runIngest()">Ingest with AI</button>
+        <button class="btn-ghost" onclick="toggleIngest()">Cancel</button>
+        <span style="font-size:10px;color:var(--muted);font-family:var(--mono);margin-left:auto">Each ingest = a git commit on GitHub</span>
+      </div>
+    </div>
+
+    <!-- PAGE -->
+    <div class="page-area" id="page-area">
+      <div class="loading-state"><p>Loading...</p></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════
+let me = null; // User config from /api/me
+let currentView = 'portfolio';
+let currentPage = '';
+
+// ═══════════════════════════════════════════════════
+// INIT — load user config then render
+// ═══════════════════════════════════════════════════
+async function init() {
+  try {
+    const res = await fetch('/api/me', { credentials: 'include' });
+    if (res.status === 401) { location.href = '/login.html'; return; }
+    me = await res.json();
+  } catch {
+    location.href = '/login.html';
+    return;
+  }
+
+  // Apply user config to UI
+  document.getElementById('user-name').textContent = me.userName;
+  document.getElementById('role-badge').textContent = me.role;
+
+  // Hide sidebar for exec
+  if (!me.showSidebar) {
+    document.getElementById('sidebar').classList.add('hidden');
+  }
+
+  // Hide ingest/lint for non-authorised roles
+  if (!me.canIngest) document.getElementById('nav-ingest').style.display = 'none';
+  if (!me.canLint) document.getElementById('nav-lint').style.display = 'none';
+
+  // Hide command bar for exec/diageo
+  if (!me.canUseAI) {
+    document.getElementById('cmd-bar').style.opacity = '.4';
+    document.getElementById('cmd-input').disabled = true;
+    document.getElementById('cmd-send').disabled = true;
+    document.getElementById('cmd-input').placeholder = 'AI commands not available for your access level';
+  }
+
+  // Disable cmd enter for non-AI users
+  document.getElementById('cmd-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && me.canUseAI) runCommand();
+  });
+
+  // Load wiki page list for sidebar
+  await loadWikiNav();
+
+  // Initial view
+  if (me.role === 'exec') {
+    renderExecDigest();
+  } else {
+    renderPortfolio();
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// WIKI NAV — load page list from API
+// ═══════════════════════════════════════════════════
+async function loadWikiNav() {
+  try {
+    const res = await fetch('/api/wiki', { credentials: 'include' });
+    const pages = await res.json();
+    const list = document.getElementById('wiki-nav-list');
+    const staticKeys = ['projectx','seven-tests','stakeholders','decision-log','mia-overview','meridian-overview','symphony-overview','tequila-overview'];
+    const dynamic = pages.filter(p => !staticKeys.includes(p.key) && !['index','log','readme','exec-digest'].includes(p.key));
+    if (dynamic.length > 0) {
+      list.innerHTML += dynamic.map(p => `
+        <div class="nav-item" onclick="navigate('wiki','${p.key}')">
+          <div class="nav-dot" style="background:var(--accent)"></div>
+          ${p.key.replace(/-/g,' ')}
+        </div>
+      `).join('');
+    }
+  } catch {}
+}
+
+// ═══════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════
+function navigate(view, page = '') {
+  currentView = view;
+  currentPage = page;
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const navMap = {
+    portfolio: 'nav-portfolio',
+    'mia-overview': 'nav-mia',
+    'meridian-overview': 'nav-meridian',
+    'symphony-overview': 'nav-symphony',
+    'tequila-overview': 'nav-tequila',
+  };
+  const id = view === 'portfolio' ? 'nav-portfolio' : navMap[page];
+  if (id) document.getElementById(id)?.classList.add('active');
+
+  if (view === 'portfolio') renderPortfolio();
+  else if (view === 'wiki') renderWikiPage(page);
+  else if (view === 'exec') renderExecDigest();
+}
+
+// ═══════════════════════════════════════════════════
+// AI STRIP
+// ═══════════════════════════════════════════════════
+function showAI(content, label = 'AI', loading = false) {
+  const strip = document.getElementById('ai-strip');
+  const body = document.getElementById('ai-strip-body');
+  document.getElementById('ai-strip-label').textContent = label;
+  strip.classList.add('show');
+  if (loading) {
+    body.innerHTML = '<div class="typing"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>';
+  } else {
+    body.innerHTML = content.replace(/\n/g, '<br>');
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// COMMAND BAR
+// ═══════════════════════════════════════════════════
+async function runCommand() {
+  const input = document.getElementById('cmd-input');
+  const q = input.value.trim();
+  if (!q || !me.canUseAI) return;
+  input.value = '';
+  document.getElementById('cmd-send').disabled = true;
+  showAI('', 'Thinking...', true);
+  try {
+    const res = await fetch('/api/ai/command', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question: q }),
+    });
+    const data = await res.json();
+    if (!res.ok) { showAI(`Error: ${data.error}`, 'Error'); return; }
+    if (data.type === 'wiki_update') {
+      showAI(`✓ Wiki page "${data.title}" updated and committed to GitHub.`, 'Wiki updated');
+      await loadWikiNav();
+    } else {
+      showAI(data.content, 'AI');
+    }
+  } catch (e) {
+    showAI(`Request failed: ${e.message}`, 'Error');
+  }
+  document.getElementById('cmd-send').disabled = false;
+}
+
+// ═══════════════════════════════════════════════════
+// INGEST
+// ═══════════════════════════════════════════════════
+function toggleIngest() {
+  const panel = document.getElementById('ingest-panel');
+  panel.classList.toggle('show');
+  if (panel.classList.contains('show')) document.getElementById('ingest-text').focus();
+}
+
+async function runIngest() {
+  const text = document.getElementById('ingest-text').value.trim();
+  const label = document.getElementById('ingest-label').value.trim() || 'Untitled source';
+  if (!text) return;
+  document.getElementById('ingest-btn').disabled = true;
+  showAI('', `Ingesting: ${label}`, true);
+  try {
+    const res = await fetch('/api/ai/ingest', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ label, content: text }),
+    });
+    const data = await res.json();
+    if (!res.ok) { showAI(`Error: ${data.error}`, 'Error'); return; }
+    showAI(`✓ Ingested "${label}" — ${data.pagesUpdated.length} pages updated and committed to GitHub.<br><br>${data.summary}`, 'Ingested');
+    document.getElementById('ingest-text').value = '';
+    document.getElementById('ingest-label').value = '';
+    document.getElementById('ingest-panel').classList.remove('show');
+    await loadWikiNav();
+    if (currentView === 'wiki') renderWikiPage(currentPage);
+  } catch (e) {
+    showAI(`Ingest failed: ${e.message}`, 'Error');
+  }
+  document.getElementById('ingest-btn').disabled = false;
+}
+
+// ═══════════════════════════════════════════════════
+// LINT
+// ═══════════════════════════════════════════════════
+async function runLint() {
+  showAI('', 'Running wiki health check...', true);
+  try {
+    const res = await fetch('/api/ai/lint', { method: 'POST', credentials: 'include' });
+    const data = await res.json();
+    if (!res.ok) { showAI(`Error: ${data.error}`, 'Error'); return; }
+    showAI(data.content, 'Wiki health check');
+  } catch (e) {
+    showAI(`Lint failed: ${e.message}`, 'Error');
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// PORTFOLIO VIEW
+// ═══════════════════════════════════════════════════
+function renderPortfolio() {
+  const area = document.getElementById('page-area');
+  area.innerHTML = `
+    <div class="portfolio-title">Portfolio overview</div>
+    <div class="portfolio-sub">Accenture / Diageo · ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</div>
+
+    <div class="health-grid">
+      <div class="health-card"><div class="hc-label">Overall health</div><div class="hc-val c-green">On track</div><div class="hc-sub">3 of 4 projects green</div></div>
+      <div class="health-card"><div class="hc-label">Open blockers</div><div class="hc-val c-amber">5</div><div class="hc-sub">2 escalated · oldest 14d</div></div>
+      <div class="health-card"><div class="hc-label">Active risks</div><div class="hc-val c-amber">8</div><div class="hc-sub">3 high · 5 medium</div></div>
+      <div class="health-card"><div class="hc-label">Decisions pending</div><div class="hc-val c-accent">3</div><div class="hc-sub">2 need sign-off</div></div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><div class="section-title">Workstreams</div><div class="section-count">4 teams</div></div>
+      ${[
+        {id:'mia-overview',name:'MIA',owner:'Tanisha, Saket',pct:72,color:'var(--green)',label:'v1 live · Q2/Q3 in progress',status:'On track',pill:'pill-green'},
+        {id:'meridian-overview',name:'Meridian',owner:'Deeksha, Pankaj',pct:55,color:'var(--accent)',label:'Design phase active',status:'In progress',pill:'pill-blue'},
+        {id:'symphony-overview',name:'Symphony',owner:'Shefali',pct:40,color:'#22B8CC',label:'Requirements finalising',status:'On track',pill:'pill-green'},
+        {id:'tequila-overview',name:'Tequila',owner:'Aanchal',pct:28,color:'var(--amber)',label:'Dashboard remediation needed',status:'At risk',pill:'pill-amber'},
+      ].map(ws=>`<div class="ws-row" onclick="navigate('wiki','${ws.id}')">
+        <div><div class="ws-name">${ws.name}</div><div class="ws-owner">${ws.owner}</div></div>
+        <div><div class="prog-bar"><div class="prog-fill" style="width:${ws.pct}%;background:${ws.color}"></div></div><div class="prog-label">${ws.pct}% · ${ws.label}</div></div>
+        <span class="pill ${ws.pill}">${ws.status}</span>
+        <div class="prog-label" style="text-align:right">PI: Jun–Aug 26</div>
+        <span style="color:var(--muted);font-size:12px">›</span>
+      </div>`).join('')}
+    </div>
+
+    <div class="section">
+      <div class="section-head"><div class="section-title">Open risks</div><div class="section-count">8 open</div></div>
+      ${[
+        {title:'Tequila: 4 dashboards with no steerco, testing, or data analysis',project:'Tequila',impact:'High',age:'14d',escalated:true,owner:'Aanchal',color:'var(--red)'},
+        {title:'MIA: KPI definition drift across Genie rooms and AI layer (eNSV, Market Share, AOP)',project:'MIA',impact:'High',age:'4d',escalated:false,owner:'Saket',color:'var(--red)'},
+        {title:'MIA: CSL Q2/Q3 BQ ingestion may slip into next PI',project:'MIA',impact:'Medium',age:'7d',escalated:false,owner:'Isha Sharma',color:'var(--amber)'},
+        {title:'MIA: Persona definitions not yet validated — UI/UX build on assumptions',project:'MIA',impact:'Medium',age:'3d',escalated:false,owner:'Mahima',color:'var(--amber)'},
+      ].map(r=>`<div class="risk-row">
+        <div class="risk-bar" style="background:${r.color}"></div>
+        <div style="flex:1"><div class="risk-title">${r.title}</div>
+        <div class="risk-meta"><span>${r.project}</span><span>${r.impact}</span><span>${r.age} old</span>${r.escalated?'<span style="color:var(--red)">Escalated</span>':''}</div></div>
+        <div class="risk-owner">${r.owner}</div>
+      </div>`).join('')}
+    </div>
+
+    <div class="section">
+      <div class="section-head"><div class="section-title">Recent decisions</div><div class="section-count section-link" onclick="navigate('wiki','decision-log')">view log →</div></div>
+      ${[
+        {date:'2026-06-02',title:'ProjectX prototype and deck built for Piyush pitch',rationale:'HTML prototype + 6-slide deck ready. Next: name an owner.',pill:'pill-green',status:'decided'},
+        {date:'2026-05-04',title:'MIA positioned as Diageo\'s standalone marketing intelligence platform',rationale:'DCIQ POC <2 hours validates modular architecture. Not yet broadly socialised.',pill:'pill-green',status:'decided'},
+        {date:'2026-04-30',title:'Agent-level prompting placed on hold',rationale:'Data assets unavailable — parked, not scheduled.',pill:'pill-amber',status:'on hold'},
+      ].map(d=>`<div class="dec-row">
+        <div class="dec-date">${d.date}</div>
+        <div style="flex:1"><div class="dec-title">${d.title}</div><div class="dec-rationale">${d.rationale}</div></div>
+        <span class="pill ${d.pill}" style="flex-shrink:0;margin-left:12px">${d.status}</span>
+      </div>`).join('')}
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════
+// WIKI PAGE VIEW
+// ═══════════════════════════════════════════════════
+async function renderWikiPage(key) {
+  const area = document.getElementById('page-area');
+  area.innerHTML = '<div class="loading-state"><p>Loading from GitHub...</p></div>';
+  try {
+    const res = await fetch(`/api/wiki/${key}`, { credentials: 'include' });
+    if (res.status === 403) {
+      area.innerHTML = '<div class="loading-state"><p>You do not have access to this page.</p></div>';
+      return;
+    }
+    if (res.status === 404) {
+      area.innerHTML = '<div class="loading-state"><p>Page not found. Use ingest or the command bar to create it.</p></div>';
+      return;
+    }
+    const page = await res.json();
+    const histRes = await fetch(`/api/wiki/${key}/history`, { credentials: 'include' });
+    const history = histRes.ok ? await histRes.json() : [];
+    const lastCommit = history[0];
+    const canWrite = me.writablePages === '*' || (Array.isArray(me.writablePages) && me.writablePages.includes(key));
+
+    area.innerHTML = `
+      <div class="wiki-header">
+        <div class="wiki-breadcrumb">Wiki › <span>${page.title}</span></div>
+        <div class="wiki-title">${page.title}</div>
+        <div class="wiki-meta">
+          <span class="wiki-updated">Updated ${page.updated || 'unknown'}</span>
+          ${(page.tags||[]).map(t=>`<span class="wiki-tag">${t}</span>`).join('')}
+          ${lastCommit ? `<span class="wiki-commit"><a href="${lastCommit.url}" target="_blank">${lastCommit.sha}</a> — ${lastCommit.author}</span>` : ''}
+        </div>
+      </div>
+      <div class="wiki-body">${marked.parse(page.body || '')}</div>
+
+      ${canWrite ? `
+      <div class="quick-update-bar">
+        <div class="quick-update-label">Update this page</div>
+        <div class="quick-update-row">
+          <input class="quick-update-input" id="quick-update-${key}" placeholder="Add a quick update — press Enter to commit to GitHub" onkeydown="if(event.key==='Enter')quickUpdate('${key}')" />
+          <button class="btn-purple" onclick="quickUpdate('${key}')">Commit</button>
+        </div>
+      </div>` : '<div style="margin-top:20px;font-size:11px;color:var(--muted);font-family:var(--mono)">Read only for your access level</div>'}
+
+      ${history.length > 0 ? `
+      <div class="history-section">
+        <div class="history-title">Git history (${history.length} commits)</div>
+        ${history.slice(0,5).map(h=>`
+          <div class="history-item">
+            <span class="history-sha"><a href="${h.url}" target="_blank">${h.sha}</a></span>
+            <span class="history-msg">${h.message}</span>
+            <span class="history-author">${h.author} · ${h.date?.slice(0,10)}</span>
+          </div>
+        `).join('')}
+      </div>` : ''}
+    `;
+  } catch (e) {
+    area.innerHTML = `<div class="loading-state"><p>Error loading page: ${e.message}</p></div>`;
+  }
+}
+
+async function quickUpdate(key) {
+  const input = document.getElementById(`quick-update-${key}`);
+  const update = input.value.trim();
+  if (!update) return;
+  input.value = '';
+  showAI('', 'Updating and committing to GitHub...', true);
+  try {
+    const res = await fetch(`/api/ai/quick-update/${key}`, {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ update }),
+    });
+    const data = await res.json();
+    if (!res.ok) { showAI(`Error: ${data.error}`, 'Error'); return; }
+    showAI('Page updated and committed to GitHub.', 'Committed');
+    renderWikiPage(key);
+  } catch (e) {
+    showAI(`Update failed: ${e.message}`, 'Error');
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// EXEC DIGEST VIEW
+// ═══════════════════════════════════════════════════
+async function renderExecDigest() {
+  const area = document.getElementById('page-area');
+  area.innerHTML = `
+    <div class="exec-digest">
+      <div class="exec-title">Executive digest</div>
+      <div class="exec-sub">Curated for leadership · ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}
+        ${me.role === 'lead' ? `<button class="exec-refresh" onclick="refreshExecDigest()">↺ Regenerate</button>` : ''}
+      </div>
+      <div id="exec-digest-body" class="wiki-body"><p style="color:var(--muted)">Loading digest...</p></div>
+    </div>
+  `;
+  await refreshExecDigest();
+}
+
+async function refreshExecDigest() {
+  try {
+    const res = await fetch('/api/ai/exec-digest', { credentials: 'include' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    document.getElementById('exec-digest-body').innerHTML = marked.parse(data.content);
+  } catch (e) {
+    document.getElementById('exec-digest-body').innerHTML = `<p style="color:var(--red)">Could not generate digest: ${e.message}</p>`;
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// START
+// ═══════════════════════════════════════════════════
+init();
+</script>
+</body>
+</html>

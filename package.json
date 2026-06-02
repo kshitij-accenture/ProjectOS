@@ -1,0 +1,13 @@
+{
+  "name": "projectx",
+  "version": "1.0.0",
+  "description": "ProjectX AI Knowledge OS",
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "nodemon backend/server.js",
+    "install-deps": "cd backend && npm install"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
